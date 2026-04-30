@@ -1,0 +1,16 @@
+#nombre|rol|vida|ataque|defensa|imagen
+Sofia|Ataque|100|2500|10|sofia.png
+Rose|Defensa|140|12|20|rose.png
+Mira|Balanceado|110|18|15|mira.png
+Ema|Ataque|95|22|12|ema.png
+Crea|Defensa|160|8|25|crea.png
+Charlotte|Balanceado|115|19|14|charlotte.png
+Noelle|Balanceado|105|17|16|noelle.png
+Iris|Ataque|90|24|11|iris.png
+Sable|Defensa|130|10|19|sable.png
+Elise|Ataque|92|23|10|elise.png
+Marion|Balanceado|108|16|15|marion.png
+Therese|Ataque|102|21|13|therese.png
+Odette|Balanceado|112|18|14|odette.png
+Vivian|Ataque|118|20|12|vivian.png
+Helene|Balanceado|114|19|15|helene.png
