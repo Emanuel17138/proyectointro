@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import os
+import random
+
 
 
 class Personaje:
@@ -21,7 +23,14 @@ class Personaje:
         self.vida = self.vida_maxima
 
     def copiar(self):
-        return Personaje(self.nombre, self.rol, self.vida_maxima, self.ataque, self.defensa, self.archivo_imagen)
+        return Personaje(
+            self.nombre,
+            self.rol,
+            self.vida_maxima,
+            self.ataque,
+            self.defensa,
+            self.archivo_imagen
+        )
 
 
 class Equipo:
@@ -55,22 +64,76 @@ class Juego:
         self.root.geometry(f"{self.w}x{self.h}")
         self.root.resizable(False, False)
         self.root.configure(bg="black")
+
         self.avatar_elegido = tk.StringVar(value="avatar1")
         self.nombre_var = tk.StringVar()
         self.i_elegidos = []
+        self.i_pelea_elegidos = []
         self.todos_p = self.cargar_p("personajes.txt")
         self.f_ini = "ibg.png"
         self.f_titulo = "titulo.png"
         self.f_conf = "confi.png"
+        self.f_mapa = "mapa.png"
+        self.f_pelea = "pelea.png"
         self.bt_inicio = "iniciar.png"
         self.bt_about = "about.png"
         self.bt_salir = "salir.png"
         self.bt_atras = "atras.png"
-        self.avatars = [["avatar1", "avatar1.png"], ["avatar2", "avatar2.png"], ["avatar3", "avatar3.png"]]
+        self.bt_capilla = "Capilla.png"
+        self.bt_patio = "Patio.png"
+        self.bt_comedor = "Comedor.png"
+        self.bt_entrada = "Entrada.png"
+        self.bt_biblioteca = "Biblioteca.png"
+        self.bt_capilla_d = "Capilla_derrotado.png"
+        self.bt_patio_d = "Patio_derrotado.png"
+        self.bt_comedor_d = "Comedor_derrotado.png"
+        self.bt_entrada_d = "Entrada_derrotado.png"
+        self.bt_biblioteca_d = "Biblioteca_derrotado.png"
+        self.bt_ver_eq = "ver_equipo.png"
+        self.bt_atacar = "atacar.png"
+        self.bt_cambiar = "cambiar_personaje.png"
+        self.bt_volver = "volver_mapa.png"
+        self.bt_iniciar_b = "iniciar_batalla.png"
+
+        self.lugares = [
+            ["Capilla", 616, 202, self.bt_capilla, self.bt_capilla_d],
+            ["Patio", 205, 400, self.bt_patio, self.bt_patio_d],
+            ["Comedor", 847, 407, self.bt_comedor, self.bt_comedor_d],
+            ["Entrada", 614, 640, self.bt_entrada, self.bt_entrada_d],
+            ["Biblioteca", 999, 690, self.bt_biblioteca, self.bt_biblioteca_d]
+        ]
+
+        self.avatars = [
+            ["avatar1", "avatar1.png"],
+            ["avatar2", "avatar2.png"],
+            ["avatar3", "avatar3.png"]
+        ]
+
+        self.hollows = []
+        self.i_lugar = None
+        self.hollow_ac = None
         self.jugador = None
+        self.personajes_pelea = []
+        self.disp_pelea = []
+        self.pj = None
+        self.ph = None
+        self.pelea_activa = False
+        self.id_pelea = 0
+
         self.imgs = []
         self.bt_personajes = []
+        self.bt_pelea = []
         self.etq_sel = None
+        self.etq_sel_pelea = None
+        self.txt_accion = None
+        self.txt_pts = None
+        self.cv_pelea = None
+        self.img_pj = None
+        self.img_ph = None
+        self.info_pj = None
+        self.info_ph = None
+
+        self.root.protocol("WM_DELETE_WINDOW", self.cerrar)
         self.m_ini()
 
     def ruta_img(self, arch):
@@ -87,6 +150,7 @@ class Juego:
                         personajes.append(Personaje(p[0], p[1], p[2], p[3], p[4], p[5]))
         return personajes
 
+
     def img_pil(self, arch, tam):
         return Image.open(self.ruta_img(arch)).convert("RGBA").resize(tam, Image.LANCZOS)
 
@@ -97,7 +161,22 @@ class Juego:
 
     def bt_img(self, arch, tam, cmd):
         im = self.img(arch, tam)
-        bt = tk.Button(self.root, image=im, command=cmd, bg="black", activebackground="black", bd=0, borderwidth=0, highlightthickness=0, padx=0, pady=0, relief="flat", cursor="hand2")
+        bt = tk.Button(
+            self.root,
+            image=im,
+            command=cmd,
+            bg="black",
+            activebackground="black",
+            bd=0,
+            borderwidth=0,
+            highlightthickness=0,
+            padx=0,
+            pady=0,
+            relief="flat",
+            overrelief="flat",
+            takefocus=False,
+            cursor="hand2"
+        )
         bt.image = im
         return bt
 
@@ -116,7 +195,7 @@ class Juego:
         return cv
 
     def m_about(self):
-        messagebox.showinfo("About", "Versión con selección completa de personajes.")
+        messagebox.showinfo("About", "about")
 
     def cerrar(self):
         self.root.destroy()
@@ -138,13 +217,36 @@ class Juego:
         self.i_elegidos = []
         cv = self.canvas()
         cv.create_image(0, 0, anchor="nw", image=self.img(self.f_conf, (self.w, self.h)))
-        ent = tk.Entry(self.root, textvariable=self.nombre_var, font=("Arial", 14), justify="center", bd=0, bg="#151313", fg="#d6c18a", insertbackground="#d6c18a")
+
+
+        ent = tk.Entry(
+            self.root,
+            textvariable=self.nombre_var,
+            font=("Arial", 14),
+            justify="center",
+            bd=0,
+            relief="flat",
+            bg="#151313",
+            fg="#d6c18a",
+            insertbackground="#d6c18a"
+        )
         cv.create_window(self.w // 2, 204, window=ent, width=500, height=34)
         self.crear_avatars(cv, 0, [450, 600, 750])
-        self.etq_sel = tk.Label(self.root, text="0/3 seleccionados", font=("Arial", 13, "bold"), bg="#111111", fg="#d6c18a", bd=0)
+
+        self.etq_sel = tk.Label(
+            self.root,
+            text="0/3 seleccionados",
+            font=("Arial", 13, "bold"),
+            bg="#111111",
+            fg="#d6c18a",
+            bd=0,
+            highlightthickness=0
+        )
         cv.create_window(self.w // 2, 444, window=self.etq_sel, width=230, height=30)
+
         marco = self.marco_scroll(cv, 520, 240, self.w // 2, 575)
         self.crear_bt_personajes(marco, 0, 3, self.todos_p, self.elegir_p, self.bt_personajes)
+
         cv.create_window(415, 750, window=self.bt_img(self.bt_atras, (150, 38), self.m_ini))
         cv.create_window(600, 750, window=self.bt_img(self.bt_about, (150, 38), self.m_about))
         cv.create_window(785, 750, window=self.bt_img(self.bt_inicio, (150, 38), self.confirmar_eleccion))
@@ -155,28 +257,49 @@ class Juego:
             return
         av_id, arch = self.avatars[i]
         im = self.img(arch, (96, 96))
-        bt = tk.Radiobutton(self.root, image=im, variable=self.avatar_elegido, value=av_id, indicatoron=False, width=104, height=104, selectcolor="#3b1214", bg="#111111", activebackground="#111111", relief="flat", bd=2, cursor="hand2")
+        bt = tk.Radiobutton(
+            self.root,
+            image=im,
+            variable=self.avatar_elegido,
+            value=av_id,
+            indicatoron=False,
+            width=104,
+            height=104,
+            selectcolor="#3b1214",
+            bg="#111111",
+            activebackground="#111111",
+            relief="flat",
+            bd=2,
+            highlightthickness=1,
+            highlightbackground="#3a2d24",
+            highlightcolor="#b59b63",
+            cursor="hand2"
+        )
         bt.image = im
         cv.create_window(xs[i], 330, window=bt)
         self.crear_avatars(cv, i + 1, xs)
 
     def marco_scroll(self, cv, w, h, x, y):
-        cont = tk.Frame(self.root, bg="#111111", bd=0)
+        cont = tk.Frame(self.root, bg="#111111", bd=0, highlightthickness=0)
         cv.create_window(x, y, window=cont)
         subcv = tk.Canvas(cont, width=w, height=h, bg="#111111", bd=0, highlightthickness=0)
         barra = tk.Scrollbar(cont, orient="vertical", command=subcv.yview, width=14)
         marco = tk.Frame(subcv, bg="#111111")
         interno = subcv.create_window((0, 0), window=marco, anchor="nw")
         subcv.configure(yscrollcommand=barra.set)
+
         def config_marco(e):
             subcv.configure(scrollregion=subcv.bbox("all"))
+
         def config_ancho(e):
             subcv.itemconfig(interno, width=e.width)
+
         def rueda(e):
             if e.delta > 0:
                 subcv.yview_scroll(-1, "units")
             elif e.delta < 0:
                 subcv.yview_scroll(1, "units")
+
         marco.bind("<Configure>", config_marco)
         subcv.bind("<Configure>", config_ancho)
         subcv.bind("<MouseWheel>", rueda)
@@ -191,7 +314,20 @@ class Juego:
             return
         p = lista[i]
         im = self.img(p.archivo_imagen, (126, 126))
-        bt = tk.Button(marco, image=im, width=134, height=134, bg="#1a1717", activebackground="#1a1717", relief="flat", bd=2, highlightthickness=1, highlightbackground="#3a2d24", cursor="hand2", command=lambda n=i: cmd(n))
+        bt = tk.Button(
+            marco,
+            image=im,
+            width=134,
+            height=134,
+            bg="#1a1717",
+            activebackground="#1a1717",
+            relief="flat",
+            bd=2,
+            highlightthickness=1,
+            highlightbackground="#3a2d24",
+            cursor="hand2",
+            command=lambda n=i: cmd(n)
+        )
         bt.image = im
         bt.bind("<MouseWheel>", marco.rueda)
         bt.grid(row=i // cols, column=i % cols, padx=14, pady=10)
@@ -201,6 +337,10 @@ class Juego:
     def act_cont(self):
         if self.etq_sel is not None:
             self.etq_sel.config(text=f"{len(self.i_elegidos)}/3 seleccionados")
+
+    def act_cont_pelea(self):
+        if self.etq_sel_pelea is not None:
+            self.etq_sel_pelea.config(text=f"{len(self.i_pelea_elegidos)}/3 seleccionados para la batalla")
 
     def elegir_p(self, i):
         if i in self.i_elegidos:
@@ -233,7 +373,129 @@ class Juego:
         self.jugador = Equipo(nombre, self.avatar_elegido.get())
         self.jugador.personajes = [self.todos_p[i].copiar() for i in self.i_elegidos]
         self.jugador.pts = 0
-       
+        self.crear_hollows()
+        self.m_mapa()
+
+    def crear_hollows(self):
+        self.hollows = []
+
+        def r(i):
+            if i >= len(self.lugares):
+                return
+
+            hollow = Equipo(f"Hollow {i + 1}", "x")
+            elegidos = random.sample(self.todos_p, 3)
+            hollow.personajes = [p.copiar() for p in elegidos]
+
+            self.hollows.append(hollow)
+            r(i + 1)
+
+        r(0)
+
+    def nombre_lugar(self, i):
+        return self.lugares[i][0]
+
+    def m_mapa(self):
+        self.limp()
+        self.imgs = []
+        self.pelea_activa = False
+        cv = self.canvas()
+        cv.create_image(0, 0, anchor="nw", image=self.img(self.f_mapa, (self.w, self.h)))
+
+        cv.create_text(25, 25, anchor="nw", text=f"Puntaje: {self.jugador.pts}", fill="white", font=("Arial", 16, "bold"))
+        self.crear_lugares(cv, 0)
+        cv.create_window(420, 730, window=self.bt_img(self.bt_ver_eq, (170, 54), self.m_eq))
+        cv.create_window(580, 730, window=self.bt_img(self.bt_salir, (170, 54), self.cerrar))
+        if self.gano_juego():
+            messagebox.showinfo("Victoria", f"¡Felicidades {self.jugador.nombre}!\nHas derrotado a los 5 Hollows.")
+
+    def crear_lugares(self, cv, i):
+        if i >= len(self.lugares):
+            return
+        nom, x, y, arch, arch_d = self.lugares[i]
+        derrotado = not self.hollows[i].tiene_personajes_disponibles()
+        bt = self.bt_img(arch_d if derrotado else arch, (170, 64), lambda n=i: self.entrar_pelea(n))
+        cv.create_window(x, y, window=bt)
+        self.crear_lugares(cv, i + 1)
+
+    def m_eq(self):
+        texto = f"Equipo de {self.jugador.nombre}\n\n"
+        def r(i, txt):
+            if i >= len(self.jugador.personajes):
+                return txt
+            p = self.jugador.personajes[i]
+            est = "KO" if p.esta_ko() else f"HP {p.vida}/{p.vida_maxima}"
+            return r(i + 1, txt + f"{p.nombre} - {est} - ATK {p.ataque} DEF {p.defensa}\n")
+        messagebox.showinfo("Equipo", r(0, texto))
+
+    def gano_juego(self):
+        return len([h for h in self.hollows if h.tiene_personajes_disponibles()]) == 0
+
+    def entrar_pelea(self, i):
+        self.i_lugar = i
+        self.hollow_ac = self.hollows[i]
+        if not self.hollow_ac.tiene_personajes_disponibles():
+            messagebox.showinfo("Ubicación limpia", "Ese Hollow ya fue derrotado.")
+            return
+        self.jugador.curar_equipo()
+        if len(self.jugador.obtener_personajes_disponibles()) < 3:
+            messagebox.showerror("Equipo incompleto", "Necesitas al menos 3 personajes disponibles para entrar en pelea.")
+            return
+        self.m_sel_pelea()
+
+    def m_sel_pelea(self):
+        self.limp()
+        self.imgs = []
+        self.bt_pelea = []
+        self.i_pelea_elegidos = []
+        self.disp_pelea = self.jugador.obtener_personajes_disponibles()
+        cv = self.canvas()
+        cv.create_image(0, 0, anchor="nw", image=self.img(self.f_pelea, (self.w, self.h)))
+
+        cv.create_text(
+            self.w // 2,
+            90,
+            text=f"Escoge 3 personajes para pelear en {self.nombre_lugar(self.i_lugar)}",
+            fill="#d6c18a",
+            font=("Arial", 24, "bold")
+        )
+        self.etq_sel_pelea = tk.Label(
+            self.root,
+            text="0/3 seleccionados para la batalla",
+            font=("Arial", 14, "bold"),
+            bg="#111111",
+            fg="#d6c18a",
+            bd=0,
+            highlightthickness=0
+        )
+        cv.create_window(self.w // 2, 135, window=self.etq_sel_pelea, width=340, height=32)
+        marco = self.marco_scroll(cv, 680, 420, self.w // 2, 405)
+        self.crear_bt_personajes(marco, 0, 4, self.disp_pelea, self.elegir_p_pelea, self.bt_pelea)
+        cv.create_window(485, 735, window=self.bt_img(self.bt_volver, (180, 54), self.m_mapa))
+        cv.create_window(710, 735, window=self.bt_img(self.bt_iniciar_b, (200, 54), self.confirmar_pelea))
+        self.act_cont_pelea()
+
+    def elegir_p_pelea(self, i):
+        if i in self.i_pelea_elegidos:
+            self.i_pelea_elegidos.remove(i)
+        elif len(self.i_pelea_elegidos) < 3:
+            self.i_pelea_elegidos.append(i)
+        else:
+            messagebox.showwarning("Límite", "Solo puedes seleccionar 3 personajes para esta pelea.")
+            return
+        self.pintar_bt(self.bt_pelea, self.i_pelea_elegidos, 0)
+        self.act_cont_pelea()
+
+    def confirmar_pelea(self):
+        if len(self.i_pelea_elegidos) != 3:
+            messagebox.showwarning("Falta dato", "Debes seleccionar exactamente 3 personajes para la batalla.")
+            return
+        self.personajes_pelea = [self.disp_pelea[i] for i in self.i_pelea_elegidos]
+        self.pj = self.personajes_pelea[0]
+        self.ph = random.choice(self.hollow_ac.obtener_personajes_disponibles())
+
+
+  
 
 
 
