@@ -139,6 +139,9 @@ class Juego:
     def ruta_img(self, arch):
         return os.path.join("img", arch)
 
+    def ruta_m(self, arch):
+        return os.path.join("sound", arch)
+
     def cargar_p(self, arch):
         personajes = []
         with open(arch, "r", encoding="utf-8") as f:
@@ -493,10 +496,250 @@ class Juego:
         self.personajes_pelea = [self.disp_pelea[i] for i in self.i_pelea_elegidos]
         self.pj = self.personajes_pelea[0]
         self.ph = random.choice(self.hollow_ac.obtener_personajes_disponibles())
+        self.m_pelea()
 
+    def equipo_pelea_ok(self):
+        return len(self.obtener_pelea_ok()) > 0
 
-  
+    def obtener_pelea_ok(self):
+        return [p for p in self.personajes_pelea if not p.esta_ko()]
 
+    def m_pelea(self):
+        self.limp()
+        self.imgs = []
+        self.pelea_activa = False
+        self.id_pelea += 1
+        cv = self.canvas()
+        self.cv_pelea = cv
+        cv.create_image(0, 0, anchor="nw", image=self.img(self.f_pelea, (self.w, self.h)))
+
+        self.txt_pts = cv.create_text(25, 25, anchor="nw", text=f"Puntaje: {self.jugador.pts}", fill="white", font=("Arial", 16, "bold"))
+        cv.create_text(self.w // 2, 38, text=f"Batalla en {self.nombre_lugar(self.i_lugar)}", fill="#f0e6d2", font=("Arial", 26, "bold"))
+
+        self.img_pj = tk.Label(self.root, bg="#080808", bd=0)
+        cv.create_window(170, 500, window=self.img_pj, width=180, height=180)
+        self.info_pj = tk.Label(self.root, text="", font=("Arial", 12, "bold"), justify="left", bg="#080808", fg="#f0e6d2", bd=0)
+        cv.create_window(180, 670, window=self.info_pj, width=300, height=145)
+
+        cv.create_window(420, 610, window=self.bt_img(self.bt_atacar, (190, 56), self.ini_turno))
+        cv.create_window(430, 675, window=self.bt_img(self.bt_cambiar, (230, 56), self.abrir_cambio))
+        cv.create_window(425, 740, window=self.bt_img(self.bt_volver, (210, 56), self.volver_mapa_pelea))
+
+        self.img_ph = tk.Label(self.root, bg="#080808", bd=0)
+        cv.create_window(990, 155, window=self.img_ph, width=180, height=180)
+        self.info_ph = tk.Label(self.root, text="", font=("Arial", 12, "bold"), justify="left", bg="#080808", fg="#f0e6d2", bd=0)
+        cv.create_window(990, 325, window=self.info_ph, width=300, height=145)
+
+        self.txt_accion = tk.Label(
+            self.root,
+            text="¡La batalla ha comenzado!",
+            font=("Arial", 13, "bold"),
+            justify="left",
+            wraplength=360,
+            bg="#080808",
+            fg="#f0e6d2",
+            bd=0
+        )
+        cv.create_window(960, 690, window=self.txt_accion, width=390, height=110)
+        self.act_pelea()
+        self.reg("¡La batalla ha comenzado!")
+
+    def act_pelea(self):
+        im_pj = self.img(self.pj.archivo_imagen, (160, 160))
+        im_ph = self.img(self.ph.archivo_imagen, (160, 160))
+        self.img_pj.config(image=im_pj)
+        self.img_pj.image = im_pj
+        self.img_ph.config(image=im_ph)
+        self.img_ph.image = im_ph
+        self.info_pj.config(text=(
+            f"Jugador: {self.jugador.nombre}\n"
+            f"Personaje: {self.pj.nombre}\n"
+            f"Rol: {self.pj.rol}\n"
+            f"Vida: {self.pj.vida}/{self.pj.vida_maxima}\n"
+            f"Ataque: {self.pj.ataque}\n"
+            f"Defensa: {self.pj.defensa}"
+        ))
+        self.info_ph.config(text=(
+            f"Hollow: {self.hollow_ac.nombre}\n"
+            f"Personaje: {self.ph.nombre}\n"
+            f"Rol: {self.ph.rol}\n"
+            f"Vida: {self.ph.vida}/{self.ph.vida_maxima}\n"
+            f"Ataque: {self.ph.ataque}\n"
+            f"Defensa: {self.ph.defensa}"
+        ))
+        if self.cv_pelea is not None and self.txt_pts is not None:
+            self.cv_pelea.itemconfig(self.txt_pts, text=f"Puntaje: {self.jugador.pts}")
+
+    def reg(self, txt):
+        if self.txt_accion is not None:
+            self.txt_accion.config(text=txt)
+
+    def daño(self, at, df):
+        d = at.ataque - df.defensa
+        if d < 1:
+            d = 1
+        crit = random.randint(1, 10)
+        if crit == 1:
+            d = int(round(d * 1.20))
+        return d, crit
+
+    def abrir_cambio(self):
+        disp = [p for p in self.obtener_pelea_ok() if p != self.pj]
+        if len(disp) == 0:
+            messagebox.showinfo("Cambio", "No hay otro personaje disponible para cambiar.")
+            return
+        top = tk.Toplevel(self.root)
+        top.title("Cambiar personaje")
+        top.geometry("500x350")
+        top.configure(bg="#111111")
+        tk.Label(top, text="Seleccione un personaje disponible", font=("Arial", 14, "bold"), bg="#111111", fg="#d6c18a").pack(pady=10)
+        lista = tk.Listbox(top, width=55, height=10, font=("Arial", 11))
+        lista.pack(pady=10)
+        self.llenar_lista(lista, disp, 0)
+
+        def ok():
+            elegido = lista.curselection()
+            if not elegido:
+                messagebox.showwarning("Cambio", "Debe seleccionar un personaje.")
+                return
+            self.pj = disp[elegido[0]]
+            self.reg(f"{self.jugador.nombre} cambió a {self.pj.nombre}.")
+            self.act_pelea()
+            top.destroy()
+
+        tk.Button(top, text="Confirmar cambio", font=("Arial", 12, "bold"), bg="#90e0ef", command=ok).pack(pady=10)
+
+    def llenar_lista(self, lista, disp, i):
+        if i >= len(disp):
+            return
+        p = disp[i]
+        lista.insert(tk.END, f"{p.nombre} | HP {p.vida}/{p.vida_maxima} | ATK {p.ataque} | DEF {p.defensa}")
+        self.llenar_lista(lista, disp, i + 1)
+
+    def ini_turno(self):
+        if self.pelea_activa:
+            return
+        self.pelea_activa = True
+        self.turno(1, self.id_pelea)
+
+    def volver_mapa_pelea(self):
+        self.pelea_activa = False
+        self.id_pelea += 1
+        self.jugador.curar_equipo()
+        if self.hollow_ac is not None:
+            self.hollow_ac.curar_equipo()
+        self.m_mapa()
+
+    def ganar_batalla(self, msg):
+        self.pelea_activa = False
+        self.id_pelea += 1
+        self.jugador.curar_equipo()
+        messagebox.showinfo("Victoria", msg)
+        self.m_mapa()
+
+    def turno(self, paso, idp):
+        if idp != self.id_pelea:
+            return
+        if not self.equipo_pelea_ok():
+            self.derrota()
+            return
+        if not self.hollow_ac.tiene_personajes_disponibles():
+            self.pelea_activa = False
+            self.reg(f"{self.hollow_ac.nombre} ha sido derrotado.")
+            self.jugador.pts += 1
+            self.act_pelea()
+            self.ganar_batalla(f"¡Derrotaste a {self.hollow_ac.nombre} en {self.nombre_lugar(self.i_lugar)}!")
+            return
+        if paso == 1:
+            self.ataca_jugador(idp)
+            return
+        if paso == 2:
+            self.revisa_ph(idp)
+            return
+        if paso == 3:
+            self.turno_hollow(idp)
+            return
+        if paso == 4:
+            self.revisa_pj()
+
+    def ataca_jugador(self, idp):
+        d, crit = self.daño(self.pj, self.ph)
+        self.ph.vida = max(0, self.ph.vida - d)
+        txt = f"{self.pj.nombre} ataca a {self.ph.nombre} y hace {d} de daño."
+        if crit:
+            txt += " ¡Golpe crítico!"
+        self.reg(txt)
+        self.act_pelea()
+        self.root.after(700, lambda: self.turno(2, idp))
+
+    def revisa_ph(self, idp):
+        if self.ph.esta_ko():
+            self.reg(f"{self.ph.nombre} quedó en KO.")
+            self.capturar(self.jugador, self.hollow_ac, self.ph)
+            if self.hollow_ac.tiene_personajes_disponibles():
+                self.ph = random.choice(self.hollow_ac.obtener_personajes_disponibles())
+                self.reg(f"{self.hollow_ac.nombre} envía a {self.ph.nombre}.")
+                self.act_pelea()
+                self.root.after(700, lambda: self.turno(3, idp))
+            else:
+                self.pelea_activa = False
+                self.jugador.pts += 1
+                self.reg(f"{self.hollow_ac.nombre} ya no tiene personajes.")
+                self.act_pelea()
+                self.ganar_batalla(f"¡Ganaste la batalla en {self.nombre_lugar(self.i_lugar)}!")
+            return
+        self.root.after(700, lambda: self.turno(3, idp))
+
+    def turno_hollow(self, idp):
+        if not self.hollow_ac.tiene_personajes_disponibles():
+            self.pelea_activa = False
+            self.m_mapa()
+            return
+        disp = self.hollow_ac.obtener_personajes_disponibles()
+        puede_cambiar = len(disp) > 1 and random.choice([True, False])
+        candidatos = [p for p in disp if p != self.ph]
+        if puede_cambiar and candidatos:
+            self.ph = random.choice(candidatos)
+            self.reg(f"{self.hollow_ac.nombre} cambió a {self.ph.nombre}.")
+            self.act_pelea()
+            self.root.after(700, lambda: self.turno(4, idp))
+            return
+        d, crit = self.daño(self.ph, self.pj)
+        self.pj.vida = max(0, self.pj.vida - d)
+        txt = f"{self.ph.nombre} ataca a {self.pj.nombre} y hace {d} de daño."
+        if crit:
+            txt += " ¡Golpe crítico!"
+        self.reg(txt)
+        self.act_pelea()
+        self.root.after(700, lambda: self.turno(4, idp))
+
+    def revisa_pj(self):
+        if self.pj.esta_ko():
+            self.reg(f"{self.pj.nombre} quedó en KO.")
+            if self.equipo_pelea_ok():
+                self.pj = self.obtener_pelea_ok()[0]
+                self.reg(f"{self.jugador.nombre} envía a {self.pj.nombre}.")
+                self.act_pelea()
+                self.pelea_activa = False
+                return
+            self.derrota()
+            return
+        self.pelea_activa = False
+
+    def derrota(self):
+        self.pelea_activa = False
+        messagebox.showerror("Derrota", "Los 3 personajes que escogiste quedaron en KO. Fin del juego.")
+        self.m_ini()
+
+    def capturar(self, ganador, perdedor, p_derrotado):
+        if p_derrotado in perdedor.personajes:
+            perdedor.personajes.remove(p_derrotado)
+        cap = p_derrotado.copiar()
+        cap.curar_completo()
+        ganador.personajes.append(cap)
+        ganador.pts += 1
+        self.reg(f"{ganador.nombre} capturó a {cap.nombre}. Su vida fue restablecida a {cap.vida_maxima}.")
+        self.act_pelea()
 
 
 root = tk.Tk()
