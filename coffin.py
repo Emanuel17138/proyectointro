@@ -877,7 +877,7 @@ class Juego:
         # Calcula el daño del jugador.
         self.ph.vida = max(0, self.ph.vida - d)
         txt = f"{self.pj.nombre} ataca a {self.ph.nombre} y hace {d} de daño."
-        if crit:
+        if crit == 1:
             txt += " ¡Golpe crítico!"
         self.reg(txt)
         self.act_pelea()
@@ -897,7 +897,6 @@ class Juego:
                 self.root.after(700, lambda: self.turno(3, idp))
             else:
                 self.pelea_activa = False
-                self.jugador.pts += 1
                 self.reg(f"{self.hollow_ac.nombre} ya no tiene personajes.")
                 self.act_pelea()
                 self.ganar_batalla(f"¡Ganaste la batalla en {self.nombre_lugar(self.i_lugar)}!")
@@ -926,7 +925,7 @@ class Juego:
         # Calcula el daño del Hollow.
         self.pj.vida = max(0, self.pj.vida - d)
         txt = f"{self.ph.nombre} ataca a {self.pj.nombre} y hace {d} de daño."
-        if crit:
+        if crit == 1:
             txt += " ¡Golpe crítico!"
         self.reg(txt)
         self.act_pelea()
